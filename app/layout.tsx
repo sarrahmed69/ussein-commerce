@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import NavbarMain from "@/components/common/navbar/NavbarMain";
 import Footer from "@/components/common/footer/Footer";
@@ -13,7 +13,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "USSEIN Commerce | Campus Marketplace",
   description: "La marketplace du campus de l Universite du Sine Saloum El-Hadj Ibrahima Niass - Achetez et vendez facilement entre etudiants.",
-  keywords: "USSEIN Commerce, Universite du Sine Saloum El-Hadj Ibrahima Niass, campus marketplace, etudiant, vente, achat, Wave, Orange Money, FCFA",
+  keywords: "USSEIN Commerce, Universite du Sine Saloum, campus marketplace, etudiant, vente, achat, Wave, Orange Money, FCFA, Senegal",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -22,10 +22,27 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "USSEIN Commerce - Campus Marketplace",
-    description: "Achetez et vendez facilement sur le campus de l Universite du Sine Saloum El-Hadj Ibrahima Niass",
-    locale: "fr_FR",
+    description: "Achetez et vendez facilement sur le campus de l Universite du Sine Saloum El-Hadj Ibrahima Niass. Paiement Wave et Orange Money accepte.",
+    url: "https://ussein-commerce.vercel.app",
+    siteName: "USSEIN Commerce",
+    locale: "fr_SN",
     type: "website",
+    images: [
+      {
+        url: "https://ussein-commerce.vercel.app/images/USSEIN-logo.jpg",
+        width: 1200,
+        height: 630,
+        alt: "USSEIN Commerce - Campus Marketplace",
+      },
+    ],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "USSEIN Commerce - Campus Marketplace",
+    description: "Achetez et vendez facilement sur le campus USSEIN. Paiement Wave et Orange Money accepte.",
+    images: ["https://ussein-commerce.vercel.app/images/USSEIN-logo.jpg"],
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
