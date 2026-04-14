@@ -11,6 +11,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  verification: {
+    google: "Uslr62jB2KWrfOWyt2tpRzXvQizO2au_qVsaqYQic8w",
+  },
   title: "USSEIN Commerce | Campus Marketplace",
   description: "La marketplace du campus de l Universite du Sine Saloum El-Hadj Ibrahima Niass - Achetez et vendez facilement entre etudiants.",
   keywords: "USSEIN Commerce, Universite du Sine Saloum, campus marketplace, etudiant, vente, achat, Wave, Orange Money, FCFA, Senegal",
