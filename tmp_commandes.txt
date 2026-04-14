@@ -1,0 +1,211 @@
+﻿"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import {
+  TbShoppingBag, TbLoader2, TbClock, TbCheck,
+  TbX, TbBrandWhatsapp, TbPackage, TbUser,
+} from "react-icons/tb";
+
+const fmt = (p: number) => new Intl.NumberFormat("fr-FR").format(p) + " FCFA";
+
+type Order = {
+  id: string;
+  buyer_name: string;
+  items: { id: string; name: string; price: number; qty: number; image: string }[];
+  total: number;
+  total_price: number | null;
+  delivery_address: string | null;
+  buyer_phone: string | null;
+  message: string | null;
+  status: string;
+  whatsapp: string | null;
+  created_at: string;
+};
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  pending:   { label: "En attente",  color: "bg-yellow-100 text-yellow-700" },
+  confirmed: { label: "Confirmee",   color: "bg-blue-100 text-blue-700" },
+  delivered: { label: "Livree",      color: "bg-green-100 text-green-700" },
+  cancelled: { label: "Annulee",     color: "bg-red-100 text-red-500" },
+};
+
+export default function VendorCommandes() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const savedId = localStorage.getItem("vendor_selected_id");
+      const { data: vendors } = await supabase.from("vendors").select("id").eq("user_id", user.id);
+      const vid = savedId && vendors?.find((v: any) => v.id === savedId) ? savedId : vendors?.[0]?.id;
+      if (!vid) { setLoading(false); return; }
+      const { data } = await supabase.from("orders")
+        .select("*").eq("vendor_id", vid)
+        .order("created_at", { ascending: false });
+      setOrders(data || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  const updateStatus = async (id: string, status: string) => {
+    setUpdating(id);
+    const supabase = createClient();
+    await supabase.from("orders").update({ status }).eq("id", id);
+
+    // Si le vendeur confirme -> diminuer le stock de chaque produit
+    if (status === "confirmed") {
+      const order = orders.find(o => o.id === id);
+      if (order?.items?.length) {
+        for (const item of order.items) {
+          // Lire le stock actuel
+          const { data: product } = await supabase
+            .from("products")
+            .select("stock")
+            .eq("id", item.id)
+            .single();
+          if (product) {
+            const newStock = Math.max(0, (product.stock || 0) - item.qty);
+            await supabase.from("products").update({ stock: newStock }).eq("id", item.id);
+          }
+        }
+      }
+    }
+
+    // Si annulation apres confirmation -> remettre le stock
+    if (status === "cancelled") {
+      const order = orders.find(o => o.id === id);
+      if (order?.status === "confirmed" && order?.items?.length) {
+        for (const item of order.items) {
+          const { data: product } = await supabase
+            .from("products")
+            .select("stock")
+            .eq("id", item.id)
+            .single();
+          if (product) {
+            await supabase.from("products").update({
+              stock: (product.stock || 0) + item.qty
+            }).eq("id", item.id);
+          }
+        }
+      }
+    }
+
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+    setUpdating(null);
+  };
+
+  if (loading) return (
+    <div className="flex justify-center py-24">
+      <TbLoader2 className="text-primary animate-spin" size={36} />
+    </div>
+  );
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Commandes</h1>
+        <p className="text-sm text-gray-500 mt-0.5">{orders.length} commande{orders.length > 1 ? "s" : ""} recue{orders.length > 1 ? "s" : ""}</p>
+      </div>
+
+      {orders.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center shadow-sm">
+          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <TbShoppingBag className="text-gray-400" size={40} />
+          </div>
+          <h3 className="text-lg font-bold text-gray-700 mb-2">Aucune commande pour l instant</h3>
+          <p className="text-gray-400 text-sm">Les commandes apparaitront ici quand des acheteurs commanderont vos produits.</p>
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mt-4">
+            <TbClock size={14} /> Les commandes arrivent en temps reel
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {orders.map(order => {
+            const st = STATUS_LABELS[order.status] ?? STATUS_LABELS.pending;
+            const date = new Date(order.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+            return (
+              <div key={order.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                {/* Header commande */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                      <TbUser className="text-primary" size={18} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-800 text-sm">{order.buyer_name}</p>
+                      <p className="text-xs text-gray-400">{date}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${st.color}`}>{st.label}</span>
+                    <p className="font-bold text-primary text-sm">{fmt((order.total_price || order.total || 0))}</p>
+                  </div>
+                </div>
+
+                {/* Produits */}
+                <div className="px-5 py-3 space-y-2">
+                  {order.items?.map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                        {item.image
+                          ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center text-gray-300 font-bold">{item.name?.[0]}</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
+                        <p className="text-xs text-gray-400">x{item.qty} · {fmt(item.price)}</p>
+                      </div>
+                      <p className="text-sm font-bold text-gray-700 flex-shrink-0">{fmt(item.price * item.qty)}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Message */}
+                {order.message && (
+                  <div className="mx-5 mb-3 bg-gray-50 rounded-xl px-4 py-2.5 text-sm text-gray-600 italic">
+                    "{order.message}"
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 px-5 py-3 border-t border-gray-50 flex-wrap">
+                  {order.whatsapp && (
+                    <a href={`https://wa.me/${order.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(`Bonjour ! Votre commande de ${fmt((order.total_price || order.total || 0))} est confirmee. Merci !`)}`}
+                      target="_blank"
+                      className="flex items-center gap-1.5 bg-green-500 text-white text-xs font-semibold px-3 py-2 rounded-xl hover:bg-green-600 transition-colors">
+                      <TbBrandWhatsapp size={16} /> Contacter
+                    </a>
+                  )}
+                  {order.status === "pending" && (
+                    <button onClick={() => updateStatus(order.id, "confirmed")} disabled={updating === order.id}
+                      className="flex items-center gap-1.5 bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-60">
+                      {updating === order.id ? <TbLoader2 size={14} className="animate-spin" /> : <TbCheck size={14} />} Confirmer
+                    </button>
+                  )}
+                  {order.status === "confirmed" && (
+                    <button onClick={async () => { await updateStatus(order.id, "delivered"); const reviewLink = `${window.location.origin}/avis/${order.id}`; if (order.whatsapp) { const msg = encodeURIComponent(`Bonjour ${order.buyer_name} ! Votre commande a ete livree. Laissez votre avis ici : ${reviewLink} Merci !`); window.open(`https://wa.me/${order.whatsapp.replace(/\D/g,"")}?text=${msg}`, "_blank"); } }} disabled={updating === order.id}
+                      className="flex items-center gap-1.5 bg-primary text-white text-xs font-semibold px-3 py-2 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60">
+                      {updating === order.id ? <TbLoader2 size={14} className="animate-spin" /> : <TbPackage size={14} />} Marquer livree
+                    </button>
+                  )}
+                  {order.status !== "cancelled" && order.status !== "delivered" && (
+                    <button onClick={() => updateStatus(order.id, "cancelled")} disabled={updating === order.id}
+                      className="flex items-center gap-1.5 bg-red-50 text-red-500 text-xs font-semibold px-3 py-2 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-60">
+                      {updating === order.id ? <TbLoader2 size={14} className="animate-spin" /> : <TbX size={14} />} Annuler
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+

@@ -1,0 +1,325 @@
+﻿"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
+import {
+  TbLoader2, TbCheck, TbAlertCircle, TbArrowLeft,
+  TbClock, TbLock, TbShieldCheck, TbCalendar, TbRefresh, TbBrandWhatsapp,
+} from "react-icons/tb";
+
+const WAVE_URL = "https://pay.wave.com/m/M_sn_jbvfq7-QED8G/c/sn/?amount=1000";
+const ADMIN_WA = "221777745251";
+const PRICE = 1000;
+const fmt = (p: number) => new Intl.NumberFormat("fr-FR").format(p);
+
+function CountDown({ expiresAt }: { expiresAt: string }) {
+  const [remaining, setRemaining] = useState("");
+  const [urgent, setUrgent] = useState(false);
+  useEffect(() => {
+    const calc = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) { setRemaining("Expire"); return; }
+      const days = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      setUrgent(days < 5);
+      setRemaining(days > 0 ? days + "j " + hours + "h restants" : hours + "h restants");
+    };
+    calc();
+    const t = setInterval(calc, 60000);
+    return () => clearInterval(t);
+  }, [expiresAt]);
+  return <span className={"font-bold " + (urgent ? "text-red-600" : "text-orange-600")}>{remaining}</span>;
+}
+
+export default function AbonnementPage() {
+  const [vendor, setVendor] = useState<any>(null);
+  const [allVendors, setAllVendors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showWave, setShowWave] = useState(false);
+  const [paid, setPaid] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+      const { data: shops } = await supabase.from("vendors").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+      const list = shops || [];
+      setAllVendors(list);
+      const savedId = localStorage.getItem("vendor_selected_id");
+      setVendor(list.find((b: any) => b.id === savedId) || list[0] || null);
+      setLoading(false);
+    })();
+  }, []);
+
+  const selectVendor = (v: any) => {
+    localStorage.setItem("vendor_selected_id", v.id);
+    setVendor(v);
+    setShowWave(false);
+    setPaid(false);
+  };
+
+  const getStatus = (v: any) => {
+    if (!v) return "none";
+    const expired = !v.subscription_expires_at || new Date(v.subscription_expires_at) <= new Date();
+    if (v.subscription_status === "active" && !expired) return "active";
+    if (v.subscription_status === "trial" && !expired) return "trial";
+    if (v.subscription_status === "pending") return "pending";
+    return "expired";
+  };
+
+  if (loading) return <div className="flex justify-center py-24"><TbLoader2 className="animate-spin text-primary" size={32} /></div>;
+
+  if (allVendors.length === 0) return (
+    <div className="max-w-lg mx-auto text-center py-16 space-y-4">
+      <TbAlertCircle className="text-gray-300 mx-auto" size={48} />
+      <p className="text-gray-500 font-medium">Vous n&apos;avez pas encore de boutique.</p>
+      <Link href="/vendor/dashboard" className="inline-flex items-center gap-2 bg-[#4a7c2f] text-white px-5 py-2.5 rounded-xl text-sm font-semibold">
+        <TbArrowLeft size={16} /> Retour
+      </Link>
+    </div>
+  );
+
+  const status = getStatus(vendor);
+  const daysLeft = vendor?.subscription_expires_at
+    ? Math.max(0, Math.floor((new Date(vendor.subscription_expires_at).getTime() - Date.now()) / 86400000))
+    : 0;
+
+  const statusConfig: Record<string, any> = {
+    active:  { bg: "bg-green-50",  border: "border-green-200",  Icon: TbShieldCheck, ic: "text-green-600",  ib: "bg-green-100",  title: "Abonnement actif",                   tc: "text-green-800",  desc: "Vos produits sont visibles par tous les etudiants.",           dc: "text-green-600"  },
+    trial:   { bg: "bg-blue-50",   border: "border-blue-200",   Icon: TbClock,       ic: "text-blue-600",   ib: "bg-blue-100",   title: "Periode d essai gratuite",            tc: "text-blue-800",   desc: "1er mois gratuit. Abonnez-vous avant expiration.",             dc: "text-blue-600"   },
+    pending: { bg: "bg-yellow-50", border: "border-yellow-200", Icon: TbRefresh,     ic: "text-yellow-600", ib: "bg-yellow-100", title: "Paiement en attente de verification", tc: "text-yellow-800", desc: "Votre paiement est en cours de verification par notre equipe.", dc: "text-yellow-600" },
+    expired: { bg: "bg-red-50",    border: "border-red-200",    Icon: TbLock,        ic: "text-red-500",    ib: "bg-red-100",    title: "Boutique suspendue",                  tc: "text-red-800",    desc: "Vos produits sont caches. Renouvelez pour les reactiver.",     dc: "text-red-600"    },
+    none:    { bg: "bg-gray-50",   border: "border-gray-200",   Icon: TbAlertCircle, ic: "text-gray-400",   ib: "bg-gray-100",   title: "Aucun abonnement",                   tc: "text-gray-700",   desc: "Abonnez-vous pour que vos produits soient visibles.",          dc: "text-gray-500"   },
+  };
+
+  const sc = statusConfig[status];
+  const StatusIcon = sc.Icon;
+  const showPayBtn = ["expired", "trial", "none"].includes(status) || (status === "active" && daysLeft <= 7);
+
+  const AVANTAGES = [
+    "Produits visibles par tous les etudiants du campus",
+    "Apparaitre dans les resultats de recherche",
+    "Badge vendeur verifie",
+    "Acces aux statistiques de ventes",
+  ];
+
+  const waMsg = encodeURIComponent(
+    "Bonjour, j'ai effectue mon paiement Wave de " + fmt(PRICE) + " FCFA pour USSEIN Commerce.\n" +
+    "Boutique : " + (vendor?.shop_name || "") + "\n" +
+    "Merci de bien vouloir activer mon abonnement."
+  );
+
+  return (
+    <div className="max-w-lg mx-auto space-y-5 pb-10">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Abonnement vendeur</h1>
+        <p className="text-sm text-gray-500 mt-1">1er mois gratuit · {fmt(PRICE)} FCFA/mois ensuite</p>
+      </div>
+
+      {allVendors.length > 1 && (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-gray-50">
+            <p className="text-sm font-semibold text-gray-700">Boutique :</p>
+          </div>
+          {allVendors.map(b => {
+            const s = getStatus(b);
+            const sel = vendor?.id === b.id;
+            const colors: Record<string,string> = { active: "text-green-600", trial: "text-blue-600", pending: "text-yellow-600", expired: "text-red-500", none: "text-gray-400" };
+            const labels: Record<string,string> = { active: "Actif", trial: "Essai gratuit", pending: "En attente", expired: "Expire", none: "Aucun" };
+            return (
+              <button key={b.id} onClick={() => selectVendor(b)}
+                className={"w-full flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 text-left transition-colors " + (sel ? "bg-primary/5" : "hover:bg-gray-50")}>
+                <div className={"w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm " + (sel ? "bg-[#4a7c2f] text-white" : "bg-gray-100 text-gray-600")}>
+                  {b.shop_name[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-800 text-sm truncate">{b.shop_name}</p>
+                  <p className={"text-xs " + colors[s]}>
+                    {labels[s]}
+                    {b.subscription_expires_at && s !== "expired" && <> · <CountDown expiresAt={b.subscription_expires_at} /></>}
+                  </p>
+                </div>
+                {sel && <TbCheck size={16} className="text-primary" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {vendor && (
+        <>
+          <div className={"rounded-2xl p-4 border flex items-start gap-3 " + sc.bg + " " + sc.border}>
+            <div className={"w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 " + sc.ib}>
+              <StatusIcon className={sc.ic} size={20} />
+            </div>
+            <div className="flex-1">
+              <p className={"font-bold text-sm " + sc.tc}>{vendor.shop_name} — {sc.title}</p>
+              <p className={"text-xs mt-0.5 " + sc.dc}>{sc.desc}</p>
+              {vendor.subscription_expires_at && status !== "expired" && (
+                <p className="text-xs mt-2 flex items-center gap-1 text-gray-500">
+                  <TbCalendar size={12} />
+                  Expire le {new Date(vendor.subscription_expires_at).toLocaleDateString("fr-FR")}
+                  {" · "}<CountDown expiresAt={vendor.subscription_expires_at} />
+                </p>
+              )}
+            </div>
+          </div>
+
+          {status === "trial" && vendor.subscription_expires_at && (
+            <div className="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Periode d essai</span>
+                <span className="font-semibold">{daysLeft} jours restants</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className={"h-full rounded-full " + (daysLeft < 5 ? "bg-red-400" : daysLeft < 10 ? "bg-orange-400" : "bg-blue-400")}
+                  style={{ width: Math.min(100, (daysLeft / 30) * 100) + "%" }} />
+              </div>
+              <p className="text-xs text-gray-400">Abonnez-vous avant la fin pour garder vos produits en ligne.</p>
+            </div>
+          )}
+
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-[#4a7c2f] p-6 text-white">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-white/70">Abonnement mensuel</p>
+                <span className="bg-green-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">1er mois GRATUIT</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-bold">{fmt(PRICE)}</span>
+                <span className="text-xl mb-1">FCFA</span>
+              </div>
+              <p className="text-white/50 text-sm mt-1">par mois · Sans engagement</p>
+            </div>
+            <div className="p-5 space-y-3">
+              {AVANTAGES.map(f => (
+                <div key={f} className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <TbCheck className="text-green-600" size={12} />
+                  </div>
+                  <span className="text-sm text-gray-700">{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bouton payer */}
+          {showPayBtn && !showWave && status !== "pending" && (
+            <button onClick={() => setShowWave(true)}
+              className="w-full bg-[#0070E0] hover:bg-[#005bb5] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-colors text-base shadow-sm">
+              <svg width="28" height="28" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="28" fill="#4a7c2f"/><ellipse cx="28" cy="36" rx="12" ry="14" fill="white"/><ellipse cx="28" cy="34" rx="8" ry="11" fill="#1a1a2e"/><ellipse cx="28" cy="37" rx="6" ry="7" fill="white"/><path d="M20 18 Q24 13 28 18 Q32 13 36 18" stroke="white" strokeWidth="2.5" fill="none" strokeLinecap="round"/><circle cx="23" cy="25" r="2" fill="white"/><circle cx="33" cy="25" r="2" fill="white"/><path d="M22 42 Q28 46 34 42" stroke="#FF6600" strokeWidth="2.5" fill="none" strokeLinecap="round"/></svg> Payer avec Wave — {fmt(PRICE)} FCFA
+            </button>
+          )}
+
+          {/* Etapes Wave */}
+          {showWave && !paid && (
+            <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowWave(false)} className="text-gray-400 hover:text-gray-600">
+                  <TbArrowLeft size={20} />
+                </button>
+                <h3 className="font-bold text-gray-800">Paiement Wave — 3 etapes</h3>
+              </div>
+
+              {/* Etape 1 */}
+              <div className="flex gap-3">
+                <div className="w-7 h-7 rounded-full bg-[#0070E0] text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-800 mb-2">Effectuez le paiement Wave</p>
+                  <a href={WAVE_URL} target="_blank" rel="noopener noreferrer"
+                    className="w-full bg-[#0070E0] hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
+                    <svg width="22" height="22" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="28" fill="#4a7c2f"/><ellipse cx="28" cy="36" rx="12" ry="14" fill="white"/><ellipse cx="28" cy="34" rx="8" ry="11" fill="#1a1a2e"/><ellipse cx="28" cy="37" rx="6" ry="7" fill="white"/><path d="M20 18 Q24 13 28 18 Q32 13 36 18" stroke="white" strokeWidth="2.5" fill="none" strokeLinecap="round"/><circle cx="23" cy="25" r="2" fill="white"/><circle cx="33" cy="25" r="2" fill="white"/><path d="M22 42 Q28 46 34 42" stroke="#FF6600" strokeWidth="2.5" fill="none" strokeLinecap="round"/></svg> Ouvrir Wave — {fmt(PRICE)} FCFA
+                  </a>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100" />
+
+              {/* Etape 2 */}
+              <div className="flex gap-3">
+                <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-800 mb-1">Confirmez via WhatsApp</p>
+                  <p className="text-xs text-gray-400 mb-2">Apres avoir paye, envoyez-nous un message pour que nous puissions verifier et activer votre boutique.</p>
+                  <a href={"https://wa.me/" + ADMIN_WA + "?text=" + waMsg}
+                    target="_blank" rel="noopener noreferrer"
+                    className="w-full bg-green-500 hover:bg-green-600 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
+                    <TbBrandWhatsapp size={20} /> Confirmer via WhatsApp
+                  </a>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100" />
+
+              {/* Etape 3 */}
+              <div className="flex gap-3">
+                <div className="w-7 h-7 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Activation sous 24h</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Apres verification, votre boutique est activee manuellement par notre equipe.</p>
+                </div>
+              </div>
+
+              <button onClick={async () => {
+                  setSubmitting(true);
+                  try {
+                    const supabase = createClient();
+                    await supabase.from("vendors").update({
+                      subscription_status: "pending",
+                    }).eq("id", vendor.id);
+                    setVendor((prev: any) => ({ ...prev, subscription_status: "pending" }));
+                    setPaid(true);
+                  } catch(e) {
+                    console.error(e);
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }} disabled={submitting}
+                className="w-full border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                {submitting ? <TbLoader2 size={16} className="animate-spin" /> : null}
+                {submitting ? "Enregistrement..." : "J\u0027ai paye et confirme via WhatsApp"}
+              </button>
+            </div>
+          )}
+
+          {/* Apres confirmation */}
+          {paid && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center space-y-2">
+              <TbCheck className="text-green-600 mx-auto" size={32} />
+              <p className="font-bold text-green-800">Merci ! Activation en cours</p>
+              <p className="text-green-600 text-xs">Notre equipe verifie votre paiement Wave et active votre boutique sous 24h.</p>
+              <Link href="/vendor/dashboard"
+                className="inline-flex items-center gap-2 bg-[#4a7c2f] text-white px-5 py-2.5 rounded-xl text-sm font-semibold mt-2">
+                Retour au tableau de bord
+              </Link>
+            </div>
+          )}
+
+          {!showPayBtn && status === "active" && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center">
+              <TbShieldCheck className="text-green-600 mx-auto mb-2" size={32} />
+              <p className="font-semibold text-green-800 text-sm">Tout est en ordre !</p>
+              <p className="text-green-600 text-xs mt-1">Renouvellement disponible 7 jours avant expiration.</p>
+            </div>
+          )}
+
+          {status === "pending" && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center space-y-2">
+              <TbRefresh className="text-yellow-600 mx-auto" size={32} />
+              <p className="font-semibold text-yellow-800 text-sm">Verification en cours</p>
+              <p className="text-yellow-600 text-xs">Notre equipe confirme votre paiement sous 24h. Pas besoin de repayer.</p>
+            </div>
+          )}
+
+          <p className="text-xs text-center text-gray-400 pb-4">
+            Probleme ? WhatsApp au 77 774 52 51
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+

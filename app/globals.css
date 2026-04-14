@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #2d5a1b;
+  --primary-dark: #1a3d10;
+  --primary-light: #4a7c2f;
+  --accent: #d4a017;
+  --accent-light: #f0c84b;
+  --bg-light: #f8faf5;
+  --green-50: #f0f8e8;
+  --green-100: #e0f0d0;
+  --green-200: #a8d080;
+  --green-700: #2d5a1b;
+  --green-900: #1a3d10;
+  --brown: #8b3a1a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background-color: #f8faf5;
+  color: #1a3d10;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.bg-primary { background-color: #2d5a1b !important; }
+.bg-primary-dark { background-color: #1a3d10 !important; }
+.text-primary { color: #2d5a1b !important; }
+.border-primary { border-color: #2d5a1b !important; }
+.ring-primary { --tw-ring-color: #2d5a1b !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f0f8e8; }
+::-webkit-scrollbar-thumb { background: #4a7c2f; border-radius: 3px; }
+
+/* Selection */
+::selection { background: #a8d080; color: #1a3d10; }
+/* === PERFORMANCE === */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+img, video {
+  content-visibility: auto;
+}
+.transition-all, .transition-colors, .transition-transform, .transition-opacity {
+  will-change: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
