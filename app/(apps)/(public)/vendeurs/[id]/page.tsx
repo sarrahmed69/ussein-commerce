@@ -2,7 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import VendeurClient from "./VendeurClient";
 
-const SITE = "https://ussein-commerce.vercel.app";
+const SITE = "https://www.ussein-commerce.com";
 
 async function getVendeur(id: string) {
   const supabase = await createClient();

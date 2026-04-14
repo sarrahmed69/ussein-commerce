@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
   TbBuildingStore, TbStarFilled, TbPhone, TbBrandWhatsapp,
-  TbPackage, TbArrowLeft, TbShieldCheck, TbLoader2, TbShare, TbCheck,
+  TbPackage, TbArrowLeft, TbShieldCheck, TbShare, TbCheck,
   TbMapPin, TbClock, TbFlame, TbTag,
 } from "react-icons/tb";
 
@@ -116,8 +116,6 @@ export default function VendeurClient({ id }: { id: string }) {
       <div className="relative h-20 lg:h-24 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#1a3d10] via-[#2d5a1b] to-[#3d7a28]" />
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#d4a017]/10 rounded-full -translate-y-1/2 translate-x-1/3" />
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4" />
         <div className="relative max-w-5xl mx-auto px-4 pt-4 flex items-center justify-between">
           <Link href="/vendeurs" className="flex items-center gap-2 text-white/70 hover:text-white text-sm font-medium bg-white/10 hover:bg-white/20 px-4 py-2 rounded-2xl backdrop-blur-sm transition-all">
             <TbArrowLeft size={16} /> Boutiques
