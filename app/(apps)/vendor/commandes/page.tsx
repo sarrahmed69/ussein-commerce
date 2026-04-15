@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -65,7 +65,7 @@ export default function VendorCommandes() {
       // Marquer comme vu
       localStorage.setItem("vendor_last_seen_orders", new Date().toISOString());
 
-      // TEMPS REEL — ecouter les nouvelles commandes
+      // TEMPS REEL â€” ecouter les nouvelles commandes
       const channel = supabase.channel("vendor-orders")
         .on("postgres_changes", {
           event: "INSERT", schema: "public", table: "orders",
@@ -115,19 +115,19 @@ export default function VendorCommandes() {
       const clientPhone = order.buyer_phone?.replace(/\D/g, "") || order.whatsapp?.replace(/\D/g, "");
       if (clientPhone) {
         const trackingUrl = order.tracking_token
-          ? window.location.origin + "/suivi/" + order.tracking_token
+          ? "https://ussein-commerce.com/suivi/" + order.tracking_token
           : window.location.origin;
-        const msg = "Bonjour " + order.buyer_name + " ! ✅\n\nVotre commande de " + fmt(order.total_price || 0) + " a ete confirmee par le vendeur.\n\nSuivez votre commande en temps reel :\n" + trackingUrl + "\n\nMerci pour votre achat !";
+        const msg = "Bonjour " + order.buyer_name + " ! âœ…\n\nVotre commande de " + fmt(order.total_price || 0) + " a ete confirmee par le vendeur.\n\nSuivez votre commande en temps reel :\n" + trackingUrl + "\n\nMerci pour votre achat !";
         window.open("https://wa.me/" + clientPhone + "?text=" + encodeURIComponent(msg), "_blank");
       }
     }
 
-    // LIVREE — envoyer avis au client
+    // LIVREE â€” envoyer avis au client
     if (status === "delivered" && order) {
       const clientPhone = order.buyer_phone?.replace(/\D/g, "") || order.whatsapp?.replace(/\D/g, "");
       if (clientPhone) {
         const reviewLink = window.location.origin + "/avis/" + order.id;
-        const msg = "Bonjour " + order.buyer_name + " ! 📦\n\nVotre commande a ete livree avec succes.\n\nLaissez votre avis ici :\n" + reviewLink + "\n\nMerci !";
+        const msg = "Bonjour " + order.buyer_name + " ! ðŸ“¦\n\nVotre commande a ete livree avec succes.\n\nLaissez votre avis ici :\n" + reviewLink + "\n\nMerci !";
         window.open("https://wa.me/" + clientPhone + "?text=" + encodeURIComponent(msg), "_blank");
       }
     }
@@ -208,7 +208,7 @@ export default function VendorCommandes() {
             <TbShoppingBag className="text-gray-400" size={40} />
           </div>
           <h3 className="text-lg font-bold text-gray-700 mb-2">
-            {search || filter !== "Toutes" ? "Aucun résultat" : "Aucune commande pour l instant"}
+            {search || filter !== "Toutes" ? "Aucun rÃ©sultat" : "Aucune commande pour l instant"}
           </h3>
           <p className="text-gray-400 text-sm">
             {search || filter !== "Toutes" ? "Essayez d autres filtres" : "Les commandes apparaitront ici en temps reel."}
@@ -252,7 +252,7 @@ export default function VendorCommandes() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
-                        <p className="text-xs text-gray-400">x{item.qty} · {fmt(item.price)}</p>
+                        <p className="text-xs text-gray-400">x{item.qty} Â· {fmt(item.price)}</p>
                       </div>
                       <p className="text-sm font-bold text-gray-700">{fmt(item.price * item.qty)}</p>
                     </div>
@@ -262,7 +262,7 @@ export default function VendorCommandes() {
                 {/* Adresse */}
                 {order.delivery_address && (
                   <div className="mx-5 mb-3 bg-gray-50 rounded-xl px-4 py-2.5 text-xs text-gray-500">
-                    📍 {order.delivery_address}
+                    ðŸ“ {order.delivery_address}
                   </div>
                 )}
 
