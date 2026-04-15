@@ -117,7 +117,7 @@ export default function VendorCommandes() {
         const trackingUrl = order.tracking_token
           ? "https://ussein-commerce.com/suivi/" + order.tracking_token
           : window.location.origin;
-        const msg = "Bonjour " + order.buyer_name + " ! âœ…\n\nVotre commande de " + fmt(order.total_price || 0) + " a ete confirmee par le vendeur.\n\nSuivez votre commande en temps reel :\n" + trackingUrl + "\n\nMerci pour votre achat !";
+        const msg = "Bonjour " + order.buyer_name + " ! ✅\n\nVotre commande de " + fmt(order.total_price || order.total || 0) + " a ete confirmee par le vendeur.\n\nSuivez votre commande en temps reel :\n" + trackingUrl + "\n\nMerci pour votre achat !";
         window.open("https://wa.me/" + clientPhone + "?text=" + encodeURIComponent(msg), "_blank");
       }
     }
