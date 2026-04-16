@@ -108,7 +108,8 @@ export default function AdminPage() {
   const suspend = async (vendor: any) => {
     setSaving(vendor.id);
     const supabase = createClient();
-    await supabase.from("vendors").update({ subscription_status: "expired", status: "suspended" }).eq("id", vendor.id);
+    const { error: errSusp } = await supabase.from("vendors").update({ subscription_status: "expired", status: "suspended" }).eq("id", vendor.id);
+    if (errSusp) { alert("Erreur suspension : " + errSusp.message); setSaving(null); setConfirmSuspend(null); return; }
     await supabase.from("products").update({ status: "inactive" }).eq("vendor_id", vendor.id);
     setVendors(prev => prev.map(v => v.id === vendor.id ? { ...v, subscription_status: "expired", status: "suspended" } : v));
     showToast("Boutique suspendue.");
@@ -157,8 +158,10 @@ export default function AdminPage() {
         prods.forEach((p: any) => { if (p.images?.length) p.images.forEach((url: string) => { try { const parts = url.split("/object/public/products/"); if (parts[1]) paths.push(decodeURIComponent(parts[1])); } catch {} }); });
         if (paths.length > 0) await supabase.storage.from("products").remove(paths);
       }
+      await supabase.from("products").delete().eq("vendor_id", vendor.id);
+      await supabase.from("orders").delete().eq("vendor_id", vendor.id);
       const { error } = await supabase.from("vendors").delete().eq("id", vendor.id);
-      if (error) { alert("Erreur : " + error.message); setSaving(null); return; }
+      if (error) { alert("Erreur suppression : " + error.message); setSaving(null); return; }
       setVendors(prev => prev.filter(v => v.id !== vendor.id));
       showToast("Boutique supprimee definitivement.");
     } catch (e) { alert("Une erreur est survenue."); }
